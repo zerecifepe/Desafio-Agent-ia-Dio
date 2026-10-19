@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AtendePet IA — Clínica Amor Pet</title>
+<style>
+:root{--green:#147d55;--pale:#e5f5ec;--bg:#f3f6f4;--ink:#1e2b25;--muted:#65736b;--line:#dce5df;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px 22px;display:flex;align-items:center;gap:12px}
+.logo{height:46px;width:46px;border-radius:15px;background:var(--pale);display:grid;place-items:center;font-size:25px}
+header h1{font-size:18px;margin:0}header p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.wrap{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px}
+.panel{background:var(--white);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 4px 20px #173c2410}
+.chat-head{padding:15px 17px;background:#f8fcf9;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.chat-head strong{display:block}.status{font-size:12px;color:var(--green)}
+.messages{height:420px;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:#f6f8f6}
+.msg{max-width:88%;padding:11px 13px;border-radius:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.user{background:#d9f4e4;align-self:flex-end;border-bottom-right-radius:4px}
+.stamp{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.quick{padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+button{font:inherit;cursor:pointer;border:1px solid #b8d8c5;background:#f7fcf8;color:#145d40;border-radius:999px;padding:8px 12px}
+button:hover{background:var(--pale)}button.primary{background:var(--green);color:#fff;border-color:var(--green)}button.primary:hover{background:#0f6745}
+.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.composer input{flex:1;min-width:0;border:1px solid var(--line);border-radius:22px;padding:11px 14px;font:inherit;outline-color:var(--green)}
+.info{padding:18px}.info h2{font-size:16px;margin:0 0 12px}.info h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:18px 0 7px}
+.info p{margin:6px 0}.detail{padding:12px;border-radius:12px;background:#f7faf8;margin-bottom:9px}
+.tag{display:inline-block;background:var(--pale);color:#145d40;border-radius:6px;padding:3px 7px;font-size:12px}
+.small{font-size:13px;color:var(--muted)}.request{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px}.request strong{display:block;margin-bottom:5px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px 22px}
+@media(max-width:760px){.wrap{grid-template-columns:1fr;margin:14px auto}.messages{height:380px}header{padding:12px 16px}}
+</style>
+</head>
+<body>
+<header><div class="logo">🐾</div><div><h1>AtendePet IA</h1><p>Clínica Amor Pet · Protótipo de atendimento</p></div></header>
+<main class="wrap">
+<section class="panel">
+ <div class="chat-head"><div><strong>Clínica Amor Pet</strong><span class="status">● Assistente de demonstração</span></div><span class="tag">DEMO</span></div>
+ <div class="messages" id="messages" aria-live="polite"></div>
+ <div class="quick" id="quick">
+  <button onclick="choose('Agendar consulta')">📅 Agendar consulta</button>
+  <button onclick="choose('Endereço e funcionamento')">📍 Endereço</button>
+  <button onclick="choose('Falar com a equipe')">👩‍⚕️ Falar com a equipe</button>
+  <button onclick="choose('Meu pet está com sintomas')">🆘 Sintomas / urgência</button>
+ </div>
+ <form class="composer" id="form"><input id="entry" placeholder="Digite sua mensagem..." autocomplete="off" aria-label="Sua mensagem"><button class="primary" type="submit">Enviar</button></form>
+</section>
+<aside class="panel info">
+ <h2>Informações da clínica</h2>
+ <div class="detail"><span class="small">Endereço informado</span><p><strong>Rua Mariano, Campo Grande</strong><br>Recife–PE</p><span class="small">Número e CEP ainda precisam ser confirmados.</span></div>
+ <div class="detail"><span class="small">Funcionamento informado</span><p><strong>Segunda a sexta · 08h às 20h</strong></p><span class="small">Horários de fim de semana não informados.</span></div>
+ <h3>Solicitações desta demonstração</h3>
+ <p class="small">Os pedidos de consulta aparecem aqui apenas nesta sessão de demonstração. Nada é enviado à clínica.</p>
+ <div id="requests"><p class="small">Ainda não há solicitações.</p></div>
+ <h3>Limites do protótipo</h3>
+ <p class="small">Esta versão simula conversas com regras locais. Não está conectada ao WhatsApp, a uma agenda real nem a um modelo de IA externo.</p>
+ <button onclick="resetDemo()">Reiniciar demonstração</button>
+</aside>
+</main>
+<footer>Protótipo demonstrável · Não substitui avaliação veterinária · Agendamentos não são confirmados automaticamente.</footer>
+<script>
+const messages=document.getElementById('messages'),entry=document.getElementById('entry'),requests=document.getElementById('requests');
+let mode='',booking={},allRequests=[];
+function add(text,who='bot'){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;const t=document.createElement('span');t.className='stamp';t.textContent=who==='bot'?'AtendePet IA':'Você';d.appendChild(t);messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
+function hello(){add('Olá! 🐾 Seja bem-vindo(a) à Clínica Amor Pet!\n\nComo podemos ajudar você e seu pet hoje? Escolha uma opção abaixo ou escreva sua mensagem.')}
+function choose(value){entry.value=value;handleSend(value)}
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const v=entry.value.trim();if(v){entry.value='';handleSend(v)}});
+function handleSend(raw){
+ add(raw,'user');const s=raw.toLowerCase();
+ if(/urg[eê]ncia|n[aã]o respira|dificuldade para respirar|convuls|desmai|sangramento intenso|veneno|envenen|intoxic/.test(s)){
+ mode='';add('Sinto muito que seu pet esteja passando por isso. 💚 Dificuldade para respirar, convulsões, desmaio, sangramento intenso ou suspeita de envenenamento podem ser emergências. Procure atendimento veterinário de emergência imediatamente; não espere uma resposta por aqui. Este protótipo não consegue avaliar o estado do animal.');return;
+ }
+ if(/endere[cç]o|onde fica|localiza[cç][aã]o|funcionamento|hor[aá]rio|abre|fecha/.test(s)){
+ add('📍 A Clínica Amor Pet fica na Rua Mariano, Campo Grande, Recife–PE.\\n\\n🕒 Funcionamento informado: segunda a sexta-feira, das 08h às 20h.\\n\\nO número, o CEP e os horários de fim de semana ainda precisam ser confirmados pela equipe.');return;
+ }
+ if(/equipe|atendente|humano|pessoa|funcion[aá]rio/.test(s)){
+ mode='';add('Claro. Este protótipo não encaminha mensagens de verdade. Na implementação real, sua conversa será direcionada à equipe da Clínica Amor Pet pelo canal configurado.');return;
+ }
+ if(/agend|consulta|marcar|veterin[aá]ri/.test(s) && !mode){mode='name';booking={};add('Vamos solicitar uma consulta! 🐾 Qual é o seu nome?');return;}
+ if(mode){
+  if(mode==='name'){booking.name=raw;mode='pet';add('Obrigado! Qual é o nome do pet e qual é a espécie dele (cão, gato ou outra)?');return;}
+  if(mode==='pet'){booking.pet=raw;mode='reason';add('Entendi. Qual é o motivo da consulta? Se o pet estiver com sinais graves, procure atendimento de emergência imediatamente.');return;}
+  if(mode==='reason'){booking.reason=raw;mode='day';add('Qual dia e período você prefere? Por exemplo: sexta-feira à tarde.');return;}
+  if(mode==='day'){booking.day=raw;booking.status='Aguardando confirmação humana';allRequests.unshift({...booking});renderRequests();mode='';add('Obrigado! Registrei esta solicitação apenas nesta demonstração. 📋\\n\\nResumo:\\nTutor: '+booking.name+'\\nPet: '+booking.pet+'\\nMotivo: '+booking.reason+'\\nPreferência: '+booking.day+'\\n\\n⚠️ A consulta NÃO está confirmada. Na versão real, a equipe verificará a agenda e entrará em contato.');return;}
+ }
+ if(/oi|ol[aá]|bom dia|boa tarde|boa noite|ajuda/.test(s)){add('Olá! 💚 Posso ajudar com pedido de consulta, endereço e horário de funcionamento, ou orientar você a procurar atendimento urgente se houver sinais graves. Escolha uma opção abaixo.');return;}
+ add('Posso ajudar com:\\n📅 Solicitação de consulta (a equipe confirma manualmente)\\n📍 Endereço e funcionamento\\n👩‍⚕️ Contato com a equipe\\n🆘 Orientação inicial sobre urgências\\n\\nQual dessas opções você precisa?');
+}
+function renderRequests(){requests.innerHTML='';if(!allRequests.length){requests.innerHTML='<p class="small">Ainda não há solicitações.</p>';return;}allRequests.forEach(r=>{const d=document.createElement('div');d.className='request';const b=document.createElement('strong');b.textContent=r.name+' · '+r.pet;const p=document.createElement('p');p.className='small';p.textContent='Motivo: '+r.reason+'\\nPreferência: '+r.day; p.style.whiteSpace='pre-line';const tag=document.createElement('span');tag.className='tag';tag.textContent='Aguardando confirmação humana';d.append(b,p,tag);requests.appendChild(d)})}
+function resetDemo(){messages.innerHTML='';mode='';booking={};allRequests=[];renderRequests();hello()}
+hello();
+</script>
+</body>
+</html>
